@@ -35,6 +35,8 @@ var W = canvas.width  = window.innerWidth-6;
 var H = canvas.height = window.innerHeight-50;
 var wscounter = 0;
 var socket;
+var radius_multiplier;
+var color_wheel;
 
 function debug(str) {
     var debugDiv = document.getElementById('debug');
@@ -52,8 +54,7 @@ function drawCircle(context,entity) {
         var x = entity["x"];
         var y = entity["y"];
         //moveTo(x,y);
-        fillStyle = entity["colour"];
-        strokeStyle = fillStyle;
+        strokeStyle = entity["colour"];
         arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
         stroke();                                
     }
@@ -243,8 +244,19 @@ mouse.mouseuppers.push(function(x,y,clicked,e) {
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+
+    radius_multiplier = radius_multiplier || (1/4);
+    var radius = Math.abs(120 * Math.sin(radius_multiplier * Math.PI));
+    radius_multiplier += 1/64;
+
+    var red = Math.sin(0.3*radius_multiplier) * 127 + 128;
+    var green = Math.sin(0.3*radius_multiplier + 2) * 127 + 128;
+    var blue = Math.sin(0.3*radius_multiplier + 4) * 127 + 128;
+    var hex = blue | (green << 8) | (red << 16);
+    hex = hex.toString(16);
+
+    addEntityWithoutName({'x':x,'y':y,'colour': "#" + hex,
+                          'radius':radius});
 });
 
 
