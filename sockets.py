@@ -61,16 +61,25 @@ class World:
 
 myWorld = World()
 clients = []
+q = gevent.queue.Queue()
+
+def worker(entity, data):
+    if (not q.empty()):
+        client = q.get()
+        client.send(json.dumps({entity:data}))
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
-    
+
+    jobs = []
+
     for client in clients:
         if (not client.closed):
-            print json.dumps({entity: data})
-            client.send(json.dumps({entity : data}))
+            q.put(client)
+            jobs.append(gevent.spawn(worker, entity, data))
     
-
+    gevent.joinall(jobs)
+    
 myWorld.add_set_listener( set_listener )
         
 @app.route('/')
@@ -78,12 +87,14 @@ def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
     return redirect('/static/index.html')
 
-def read_ws(ws):
+def read_ws(ws, client=None):
     '''A greenlet function that reads from the websocket and updates the world'''
     while not ws.closed:
-        message = json.loads(ws.receive())
-        for k in message.keys():
-            myWorld.set(k, message[k])
+        message = ws.receive()
+        if message:
+            message = json.loads(message)
+            for k in message.keys():
+                myWorld.set(k, message[k])
     
     return None
 
@@ -93,7 +104,8 @@ def subscribe_socket(ws):
        websocket and read updates from the websocket '''
     # XXX: TODO IMPLEMENT ME
     clients.append(ws)
-    read_ws(ws)
+    worker = gevent.spawn(read_ws, ws)
+    worker.join()
     return None
 
 
